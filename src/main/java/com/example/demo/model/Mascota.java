@@ -9,6 +9,7 @@ import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -30,9 +31,9 @@ public class Mascota {
 	private String tipo;
 	private String raza;
 	private int edad;
+	
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JsonBackReference("userMascota")
-	@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 	private User usuario;
 	
 	public Mascota(String nombre, String tipo, String raza, int edad, User usuario) {

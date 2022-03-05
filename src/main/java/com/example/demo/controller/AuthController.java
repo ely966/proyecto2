@@ -1,12 +1,13 @@
 package com.example.demo.controller;
 
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.servlet.http.HttpServletResponse;
+
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,20 +15,24 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.error.ApiError;
+import com.example.demo.error.CredencialesInvalidasException;
 import com.example.demo.error.EmailExistedException;
 import com.example.demo.model.LoginCredentials;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepo;
 import com.example.demo.security.JWTUtil;
 import com.example.demo.service.UserService;
+import com.fasterxml.jackson.databind.JsonMappingException;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
@@ -89,7 +94,7 @@ public class AuthController {
 
             return Collections.singletonMap("jwt-token", token);
         }catch (AuthenticationException authExc){
-            throw new RuntimeException("Invalid Login Credentials");
+        	throw new CredencialesInvalidasException() ;
         }
     }
     
@@ -98,16 +103,27 @@ public class AuthController {
         throw new IllegalArgumentException("\"El correo ya existe\"");
     }
     
- 
+    //Evitar el error cuando se
+    @ExceptionHandler(CredencialesInvalidasException.class)
+	public ResponseEntity<ApiError> handleProductoNoEncontrado(CredencialesInvalidasException  ex) {
+		ApiError apiError = new ApiError();
+		apiError.setEstado(HttpStatus.NOT_FOUND);
+		apiError.setFecha(LocalDateTime.now());
+		apiError.setMensaje(ex.getMessage());
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+	}
+	
+	@ExceptionHandler(JsonMappingException.class)
+	public ResponseEntity<ApiError> handleJsonMappingException(JsonMappingException ex) {
+		ApiError apiError = new ApiError();
+		apiError.setEstado(HttpStatus.BAD_REQUEST);
+		apiError.setFecha(LocalDateTime.now());
+		apiError.setMensaje(ex.getMessage());
+		
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
+	}
     
-  //  @GetMapping("/auth/comprobar/{email}")
- //   public String ComprobarExistencia(@PathVariable String email){
- //	   /**activar init**/
-  //  	User usuario = userRepo.findByEmail(email).get();
-   // 	if(usuario !=null) {
-  //  		return "existe";
-    //	}
-	//	return "a";
- 	   
-// }
+    
+
 }

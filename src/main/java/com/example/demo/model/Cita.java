@@ -40,7 +40,7 @@ public class Cita {
 	@JsonBackReference("userCita")  
 	@JoinColumn(name="Cliente")
 	private User cliente;
-	@OneToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.EAGER)
 	private Mascota pet;
 	@Temporal(TemporalType.DATE)
 	@DateTimeFormat(pattern = "yyyy-MM-dd")

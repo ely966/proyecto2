@@ -15,13 +15,14 @@ import com.example.demo.model.CredencialesCita;
 import com.example.demo.model.Mascota;
 import com.example.demo.model.User;
 import com.example.demo.repository.CitasRepository;
+import com.example.demo.repository.MascotaRepository;
 
 @Primary
 @Service("CitaService")
 public class CitaService {
 	@Autowired CitasRepository citaRepo;
 	 @Autowired private MascotaService mascotaServi;
-	
+	 @Autowired private MascotaRepository mascotaRepo;
 	 /**
 	  * Añade una nueva cita
 	  * @param cita
@@ -33,8 +34,8 @@ public class CitaService {
 		nuevaCita.setCliente(usuario);
 		nuevaCita.setFecha(cita.getFecha());
 		nuevaCita.setHora(cita.getFecha());
-		nuevaCita.setPet(mascotaServi.encontrarId(pet));
-		//nuevaCita.setIdpet(pet);
+		nuevaCita.setPet(mascotaRepo.findById(pet).get());
+		//mascotaServi.encontrarId(pet)
 		nuevaCita.setMotivo(cita.getMotivo());
 		citaRepo.save(nuevaCita);
 		return nuevaCita;
@@ -98,6 +99,22 @@ public class CitaService {
 			}
 		}
 	}
+	
+	public Boolean comprobarExistenciaCita(Long id) {
+		return citaRepo.existsById(id);
+	}
+	
+	public Cita encontrarCitaId (Long id) {
+		return citaRepo.findById(id).get();
+	}
+	
+	/**
+	 * Edtar una cita
+	 * @param cita
+	 * @param usuario
+	 * @param id
+	 * @return
+	 */
 	
 	public Cita editarCita(CreadencialesCitaConId cita,User usuario, Long id) {
 		Cita citaEditada = new Cita();

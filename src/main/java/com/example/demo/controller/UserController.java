@@ -1,17 +1,20 @@
 package com.example.demo.controller;
 
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +22,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.error.ApiError;
 import com.example.demo.error.CitaExistedException;
+import com.example.demo.error.CredencialesInvalidasException;
 import com.example.demo.error.EmailExistedException;
 import com.example.demo.error.MascotaExistedException;
 import com.example.demo.model.Cita;
@@ -33,6 +38,7 @@ import com.example.demo.repository.UserRepo;
 import com.example.demo.service.CitaService;
 import com.example.demo.service.MascotaService;
 import com.example.demo.service.UserService;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
@@ -69,7 +75,7 @@ public class UserController {
         } 
     }
     
- /**Mascota**/  
+ /**---------------------Mascota-------------------------------------**/  
     /**
      *  Con este metodo añadiremos mascota nueva y gracia asu relacion, se le añadira al cliente
      * @param Trae la informacion de la mascota. Comprueba que el usuario
@@ -93,8 +99,6 @@ public class UserController {
        }catch (AuthenticationException authExc){
            throw new RuntimeException("Incorrecto Crear mascota");
        }
-
-
        // return userRepo.findByEmail(email).get();//.get
     }
     
@@ -130,7 +134,7 @@ public class UserController {
     		String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
             User usuario = userRepo.findByEmail(email).get();
             if(usuario != null) {
-            	 return mascotaRepo.getById(id);
+            	 return mascotaServi.encontrarId(id);
             }else {
             	 throw new IllegalArgumentException("\"El usuario no existe\"");
             }
@@ -153,7 +157,7 @@ public class UserController {
         User usuario = userRepo.findByEmail(email).get();
     	
 		if (usuario != null) {//*si el usuario no es null*/
-			Boolean pet= mascotaRepo.existsById(id);
+			Boolean pet= mascotaServi.comprobarExistencia(id);
 			
 			if (pet) {//*Si la mascota existe**/
 				Mascota MascotaSeleccionada= mascotaRepo.getById(id);
@@ -191,7 +195,7 @@ public class UserController {
 			throw new EmailExistedException(email);
 		} else {
 			
-			Boolean pet= mascotaRepo.existsById(mascota.getId());
+			Boolean pet= mascotaServi.comprobarExistencia(mascota.getId());
 			if (pet) {/**Si existe la cita**/
 				
 				mascotaServi.editarMascota(mascota, usuario);
@@ -205,6 +209,35 @@ public class UserController {
         
     }
     
+    @GetMapping(value = "/cliente/mascota/throwException")
+    public void throwException() {
+        throw new IllegalArgumentException("\"La mascota no existe\"");
+    }
+    
+    //Cuando mascota no existe
+    @ExceptionHandler(MascotaExistedException.class)
+	public ResponseEntity<ApiError> handleMascotaNoEncontrado(CredencialesInvalidasException  ex) {
+		ApiError apiError = new ApiError();
+		apiError.setEstado(HttpStatus.NOT_FOUND);
+		apiError.setFecha(LocalDateTime.now());
+		apiError.setMensaje(ex.getMessage());
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
+	}
+	
+	@ExceptionHandler(JsonMappingException.class)
+	public ResponseEntity<ApiError> handleJsonMappingException(JsonMappingException ex) {
+		ApiError apiError = new ApiError();
+		apiError.setEstado(HttpStatus.BAD_REQUEST);
+		apiError.setFecha(LocalDateTime.now());
+		apiError.setMensaje(ex.getMessage());
+		
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
+	}   
+    
+    
+    
+/**---------------------Fin-Mascota-------------------------------------**/  
     
     
     
@@ -226,12 +259,12 @@ public class UserController {
             User usuario = userRepo.findByEmail(email).get();
         	if(usuario != null) {
         	
-        		Boolean pet= mascotaRepo.existsById(id);
+        		Boolean pet= mascotaServi.comprobarExistencia(id);
         			if (pet) {//*Si la mascota existe**/
-        				Mascota mascota = mascotaRepo.getById(id);
+        				
         				Cita nuevaCita=citaServi.addCita(cita, usuario, id);
             	    	//citaRepo.save(nuevaCita);
-            	    	List<Cita>citas=citaRepo.findAll();
+            	    	
                 		return nuevaCita;
         			}else {
         				throw new MascotaExistedException(cita.getPetid());
@@ -268,6 +301,23 @@ public class UserController {
     }
     
     
+    
+    @GetMapping("/cliente/mascota/{idM}/cita/{idC}")
+    public Cita infoCita(@PathVariable Long idC){
+    	
+    	try {
+    		String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            User usuario = userRepo.findByEmail(email).get();
+            if(usuario != null) {
+            	return citaServi.encontrarCitaId(idC);
+            }else {
+            	throw new IllegalArgumentException("\"El usuario no existe\"");	
+            }
+    	}catch (AuthenticationException authExc){
+            throw new RuntimeException("No tienes permiso");
+        }      
+    }
+    
     /**
      * Borrar cita 
      * @param id
@@ -283,11 +333,11 @@ public class UserController {
 			throw new EmailExistedException(email);
 		} else {
 			
-			Boolean cita = citaRepo.existsById(id);
+			Boolean cita = citaServi.comprobarExistenciaCita(id);
 			
 			if (cita) {/**Si existe la cita**/
 				
-				Cita citaSeleccionada= citaRepo.getById(id);/**Recogemos la cita**/
+				Cita citaSeleccionada= citaServi.encontrarCitaId(id);/**Recogemos la cita**/
 				citaServi.delete(usuario,citaSeleccionada);
 				
 				return ResponseEntity.noContent().build();
@@ -313,7 +363,7 @@ public class UserController {
 			throw new EmailExistedException(email);
 		} else {
 			
-			Boolean citaExist = citaRepo.existsById(cita.getId());
+			Boolean citaExist = citaServi.comprobarExistenciaCita(id);
 			if (citaExist) {/**Si existe la cita**/
 				
 				return citaServi.editarCita(cita, usuario, id);

@@ -46,14 +46,18 @@ public class MascotaService {
 		Mascota pet= new Mascota();
 		Mascota mascotaseleccionada = mascotaRepo.findById(id).orElse(null);
 	
-		Mascota mascotase= mascotaRepo.getById(id);
+		Mascota mascotase= mascotaRepo.findById(id).get();
 		for (int i=0; i< mascotaRepo.count();i=i+1) {
 			if(pets.get(i).getId() == id) {
 				pet = pets.get(i);
 			}
 		}
-		return pet;
+		return mascotase;
 		
+	}
+	
+	public Boolean comprobarExistencia(Long id) {
+		return mascotaRepo.existsById(id);
 	}
 	/**
 	 * Borra una mascota
